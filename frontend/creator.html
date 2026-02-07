@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>CrowdSubHybrid • Creator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>CrowdSubHybrid</h1>
+        <p class="muted">Creator Panel</p>
+      </div>
+      <div class="pills">
+        <a class="nav" href="./index.html">Dashboard</a>
+        <a class="nav" href="./creator.html">Creator</a>
+        <a class="nav" href="./campaign.html">Campaign</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <button id="btnConnect">Connect MetaMask</button>
+      <div class="small">Network: <code id="net">—</code></div>
+      <div class="small">Wallet: <code id="addr">—</code></div>
+      <div class="small">ETH Balance: <code id="ethBal">—</code></div>
+      <div class="small">SUB Balance: <code id="subBal">—</code></div>
+      <div id="status" class="status small">status: idle</div>
+    </div>
+
+    <div class="card">
+      <h3>Create Campaign</h3>
+      <label>Title</label>
+      <input id="cTitle" value="My Creator Campaign" />
+      <label>Goal (ETH)</label>
+      <input id="cGoal" value="0" />
+      <label>Duration (seconds)</label>
+      <input id="cDur" value="3600" />
+      <div class="actions">
+        <button id="btnCreateCampaign">Create Campaign</button>
+      </div>
+      <p class="muted small">After creation, campaignId increments starting from 1.</p>
+    </div>
+
+    <div class="card">
+        <h3>Creator Content (Add Post)</h3>
+        <p class="muted small">
+        Only the campaign owner can publish posts. We verify ownership on-chain + signature.
+        </p>
+
+        <label>Campaign ID</label>
+        <input id="postCampId" value="1" />
+
+        <label>Post Title</label>
+        <input id="postTitle" value="Update #1" />
+
+        <label>Post Body</label>
+        <textarea id="postBody" rows="6">Hello supporters! This is gated content.</textarea>
+
+        <div class="actions">
+            <button id="btnPublishPost">Publish Post</button>
+        </div>
+    </div>
+
+
+    <div class="card">
+      <h3>Create Tier (Any tier you want)</h3>
+      <label>Campaign ID</label>
+      <input id="tierCampId" value="1" />
+      <label>Tier name</label>
+      <input id="tierName" value="Bronze" />
+      <label>Price (ETH)</label>
+      <input id="tierPriceEth" value="0.01" />
+      <label>Period (seconds)</label>
+      <input id="tierPeriod" value="60" />
+
+      <div class="actions">
+        <button id="btnCreateTier">Create Tier</button>
+        <button class="secondary" id="btnTierCount">Check Tier Count</button>
+      </div>
+
+      <div class="kv" style="margin-top:10px;">
+        <div class="item"><span>tierCount</span><code id="tierCount">—</code></div>
+        <div class="item"><span>lastTierId</span><code id="lastTierId">—</code></div>
+      </div>
+
+      <p class="muted small">
+        Only the campaign owner can create tiers. Use a short period (e.g., 60 seconds) for defense demo.
+      </p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+  <script type="module" src="./creator.js"></script>
+</body>
+</html>

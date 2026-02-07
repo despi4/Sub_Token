@@ -1,202 +1,214 @@
-/* global ethers */
+import {
+  el, setStatus, connect,
+  getEthBalance, getSubBalance,
+  getTierPriceWei,
+  BACKEND_URL
+} from "./common.js";
 
-const SEPOLIA_CHAIN_ID = 11155111;
+let ctx = null;
+let currentCampaignId = 1n;
+let campaignOwner = null;
 
-let provider, signer, user;
-let crowdfunding, token;
-
-const el = (id) => document.getElementById(id);
-
-function setStatus(msg, cls = "muted") {
-  const s = el("status");
-  s.className = `${cls} small`;
-  s.textContent = `status: ${msg}`;
+function showTab(which) {
+  el("tabExplore").classList.toggle("active", which === "explore");
+  el("tabCreator").classList.toggle("active", which === "creator");
+  el("viewExplore").classList.toggle("hidden", which !== "explore");
+  el("viewCreator").classList.toggle("hidden", which !== "creator");
 }
 
-async function connectWallet() {
-  if (!window.ethereum) throw new Error("MetaMask not found");
+function renderPosts(access, posts) {
+  const root = el("posts");
+  root.innerHTML = "";
 
-  await window.ethereum.request({ method: "eth_requestAccounts" });
-
-  provider = new ethers.BrowserProvider(window.ethereum);
-  signer = await provider.getSigner();
-  user = await signer.getAddress();
-
-  el("addr").textContent = user;
-
-  await checkNetwork();
-  await refreshEthBalance();
-}
-
-async function checkNetwork() {
-  const network = await provider.getNetwork();
-  const chainId = Number(network.chainId);
-
-  el("net").textContent = `${network.name} (chainId=${chainId})`;
-
-  if (chainId !== SEPOLIA_CHAIN_ID) {
-    setStatus("Wrong network. Please switch MetaMask to Sepolia.", "warn");
-    throw new Error("Wrong network: please select Sepolia");
-  }
-  setStatus("Connected to Sepolia ✅", "ok");
-}
-
-async function refreshEthBalance() {
-  if (!provider || !user) return;
-  const bal = await provider.getBalance(user);
-  el("ethBal").textContent = `${ethers.formatEther(bal)} ETH`;
-}
-
-async function refreshTokenBalance() {
-  if (!token || !user) {
-    el("tokBal").textContent = "—";
+  if (!posts || posts.length === 0) {
+    root.innerHTML = `<p class="muted small">No posts yet.</p>`;
     return;
   }
-  const bal = await token.balanceOf(user);
-  // assuming 18 decimals (standard)
-  el("tokBal").textContent = `${ethers.formatUnits(bal, 18)} RWD`;
-}
 
-function parseJSONAbi(text) {
-  try {
-    const parsed = JSON.parse(text);
-    if (!Array.isArray(parsed)) throw new Error("ABI must be a JSON array");
-    return parsed;
-  } catch (e) {
-    throw new Error("Invalid ABI JSON. Paste the ABI array from Remix.");
+  for (const p of posts) {
+    const body = access === "full" ? (p.body || "") : (p.bodyPreview || "");
+    const div = document.createElement("div");
+    div.className = "card postCard";
+    div.innerHTML = `
+      <h4>${escapeHtml(p.title)}</h4>
+      <div class="postMeta">by ${escapeHtml(p.author)} • ${escapeHtml(p.createdAt)}</div>
+      <div class="small" style="margin-top:8px; white-space:pre-wrap;">${escapeHtml(body)}</div>
+    `;
+    root.appendChild(div);
   }
 }
 
-async function initContracts() {
-  if (!signer) throw new Error("Connect wallet first");
-
-  const crowdAddr = el("crowdAddr").value.trim();
-  const tokenAddr = el("tokenAddr").value.trim();
-  if (!crowdAddr || !tokenAddr) throw new Error("Paste both contract addresses");
-
-  const crowdAbi = parseJSONAbi(el("crowdAbi").value.trim());
-  const tokenAbi = parseJSONAbi(el("tokenAbi").value.trim());
-
-  crowdfunding = new ethers.Contract(crowdAddr, crowdAbi, signer);
-  token = new ethers.Contract(tokenAddr, tokenAbi, signer);
-
-  setStatus("Contracts initialized ✅", "ok");
-  await refreshTokenBalance();
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (m) => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"
+  }[m]));
 }
 
-async function createCampaign() {
-  if (!crowdfunding) throw new Error("Initialize contracts first");
-
-  const title = el("cTitle").value;
-  const goalEth = el("cGoal").value;
-  const duration = BigInt(el("cDur").value);
-
-  setStatus("Creating campaign… (confirm in MetaMask)");
-  const tx = await crowdfunding.createCampaign(
-    title,
-    ethers.parseEther(goalEth),
-    duration
-  );
-  setStatus(`Pending: ${tx.hash}`);
-
-  await tx.wait();
-  setStatus("Campaign created ✅", "ok");
-}
-
-async function contribute() {
-  if (!crowdfunding) throw new Error("Initialize contracts first");
-
-  const id = BigInt(el("campId").value);
-  const amountEth = el("donateEth").value;
-
-  setStatus("Sending contribution… (confirm in MetaMask)");
-  const tx = await crowdfunding.contribute(id, {
-    value: ethers.parseEther(amountEth),
-  });
-  setStatus(`Pending: ${tx.hash}`);
-
-  await tx.wait();
-  setStatus("Contribution successful ✅ (Reward token minted)", "ok");
-
-  await refreshEthBalance();
-  await refreshTokenBalance();
+async function refreshBalances() {
+  el("ethBal").textContent = `${await getEthBalance(ctx.provider, ctx.user)} ETH`;
+  el("subBal").textContent = `${await getSubBalance(ctx.token, ctx.user)} SUB`;
 }
 
 async function loadCampaign() {
-  if (!crowdfunding) throw new Error("Initialize contracts first");
+  currentCampaignId = BigInt(el("campaignId").value.trim());
 
-  const id = BigInt(el("infoId").value);
+  setStatus("Loading campaign…", "warn");
+  const c = await ctx.hybrid.getCampaign(currentCampaignId);
 
-  setStatus("Loading campaign…");
-  // Your contract has getCampaign(uint256) returning struct
-  const c = await crowdfunding.getCampaign(id);
+  const title = c.title ?? c[0];
+  campaignOwner = (c.owner ?? c[1]).toLowerCase();
+  const collected = ethers.formatEther(c.collectedWei ?? c[4]);
+  const deadline = String(c.deadline ?? c[3]);
 
-  // Depending on Solidity, struct fields come by index + named keys.
-  el("infoTitle").textContent = c.title ?? c[0];
-  el("infoOwner").textContent = c.owner ?? c[1];
-  el("infoGoal").textContent = ethers.formatEther(c.goalWei ?? c[2]);
-  el("infoDeadline").textContent = String(c.deadline ?? c[3]);
-  el("infoCollected").textContent = ethers.formatEther(c.collectedWei ?? c[4]);
-  el("infoFinal").textContent = String(c.finalized ?? c[5]);
+  el("campTitle").textContent = title;
+  el("campOwner").textContent = campaignOwner;
+  el("campCollected").textContent = `${collected} ETH`;
+  el("campDeadline").textContent = deadline;
 
-  setStatus("Campaign loaded ✅", "ok");
+  // role gating for Creator Studio
+  const isOwner = ctx.user.toLowerCase() === campaignOwner;
+  el("creatorOnly").classList.toggle("hidden", !isOwner);
+  el("creatorBlocked").classList.toggle("hidden", isOwner);
+
+  // set creator default inputs
+  el("tierId").value = "1";
+
+  await refreshSubscription();
+  await refreshMyContribution().catch(() => {});
+  setStatus("Campaign ready ✅", "ok");
 }
 
-async function myContribution() {
-  if (!crowdfunding) throw new Error("Initialize contracts first");
-  if (!user) throw new Error("Connect wallet first");
+async function refreshSubscription() {
+  const until = await ctx.hybrid.activeUntil(currentCampaignId, ctx.user);
+  const active = await ctx.hybrid.isActive(currentCampaignId, ctx.user);
 
-  const id = BigInt(el("infoId").value);
+  el("activeUntil").textContent = String(until);
+  el("isActive").textContent = String(active);
 
-  setStatus("Reading my contribution…");
-  // mapping contributions(campaignId, user) exists in your contract
-  const amt = await crowdfunding.contributions(id, user);
-  el("myContrib").textContent = ethers.formatEther(amt);
-
-  setStatus("Contribution loaded ✅", "ok");
+  el("premiumBox").classList.toggle("hidden", !active);
+  el("previewBox").classList.toggle("hidden", active);
 }
 
-async function finalizeCampaign() {
-  if (!crowdfunding) throw new Error("Initialize contracts first");
+async function refreshMyContribution() {
+  const amt = await ctx.hybrid.contributions(currentCampaignId, ctx.user);
+  el("myContrib").textContent = `${ethers.formatEther(amt)} ETH`;
+}
 
-  const id = BigInt(el("finId").value);
+async function donate() {
+  const amountEth = el("donEth").value.trim();
+  setStatus("Confirm donation in MetaMask…", "warn");
+  const tx = await ctx.hybrid.contribute(currentCampaignId, { value: ethers.parseEther(amountEth) });
+  setStatus(`Pending: ${tx.hash}`, "warn");
+  await tx.wait();
+  setStatus("Donation successful ✅", "ok");
+  await refreshBalances();
+  await refreshMyContribution();
+  await loadCampaign();
+}
 
-  setStatus("Finalizing… (confirm in MetaMask)");
-  const tx = await crowdfunding.finalize(id);
-  setStatus(`Pending: ${tx.hash}`);
+async function subscribeRenew() {
+  const tierId = BigInt(el("tierId").value.trim());
+  const priceWei = await getTierPriceWei(ctx.hybrid, currentCampaignId, tierId);
 
+  setStatus("Confirm subscription in MetaMask…", "warn");
+  const tx = await ctx.hybrid.subscribe(currentCampaignId, tierId, { value: priceWei });
+  setStatus(`Pending: ${tx.hash}`, "warn");
+  await tx.wait();
+
+  setStatus("Subscribed/Renewed ✅", "ok");
+  await refreshBalances();
+  await refreshSubscription();
+  await refreshMyContribution();
+}
+
+async function loadPosts() {
+  setStatus("Loading posts…", "warn");
+  const url = `${BACKEND_URL}/campaigns/${currentCampaignId}/posts?address=${ctx.user}`;
+  const resp = await fetch(url);
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data.error || "Failed to load posts");
+
+  el("contentAccess").textContent = data.access;
+  renderPosts(data.access, data.posts);
+  setStatus("Posts loaded ✅", "ok");
+}
+
+async function publishPost() {
+  // creator only
+  const title = el("postTitle").value.trim();
+  const body = el("postBody").value.trim();
+  if (!title || !body) throw new Error("Fill post title and body");
+
+  const nonce = Math.floor(Math.random() * 1e9);
+  const message =
+`CrowdSubHybrid Creator Post
+campaignId: ${currentCampaignId}
+address: ${ctx.user}
+nonce: ${nonce}`;
+
+  setStatus("Sign message in MetaMask…", "warn");
+  const signature = await ctx.signer.signMessage(message);
+
+  setStatus("Publishing post…", "warn");
+  const resp = await fetch(`${BACKEND_URL}/campaigns/${currentCampaignId}/posts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, body, address: ctx.user, message, signature })
+  });
+
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data.error || "Publish failed");
+
+  setStatus("Post published ✅", "ok");
+}
+
+async function createCampaign() {
+  const title = el("newTitle").value.trim();
+  const goalEth = el("newGoal").value.trim();
+  const dur = BigInt(el("newDur").value.trim());
+
+  setStatus("Confirm campaign creation…", "warn");
+  const tx = await ctx.hybrid.createCampaign(title, ethers.parseEther(goalEth), dur);
+  setStatus(`Pending: ${tx.hash}`, "warn");
+  await tx.wait();
+
+  setStatus("Campaign created ✅. Open it by ID.", "ok");
+}
+
+async function createTier() {
+  const name = el("newTierName").value.trim();
+  const priceEth = el("newTierPrice").value.trim();
+  const period = BigInt(el("newTierPeriod").value.trim());
+
+  setStatus("Confirm tier creation…", "warn");
+  const tx = await ctx.hybrid.createTier(currentCampaignId, name, ethers.parseEther(priceEth), period);
+  setStatus(`Pending: ${tx.hash}`, "warn");
+  await tx.wait();
+
+  setStatus("Tier created ✅", "ok");
+}
+
+async function finalize() {
+  setStatus("Confirm finalize…", "warn");
+  const tx = await ctx.hybrid.finalize(currentCampaignId);
+  setStatus(`Pending: ${tx.hash}`, "warn");
   await tx.wait();
   setStatus("Finalized ✅", "ok");
+  await loadCampaign();
 }
 
-// UI bindings
+el("tabExplore").onclick = () => showTab("explore");
+el("tabCreator").onclick = () => showTab("creator");
+
 el("btnConnect").onclick = async () => {
   try {
-    await connectWallet();
-  } catch (e) {
-    setStatus(e.shortMessage || e.message, "err");
-  }
-};
-
-el("btnInit").onclick = async () => {
-  try {
-    await initContracts();
-  } catch (e) {
-    setStatus(e.shortMessage || e.message, "err");
-  }
-};
-
-el("btnCreate").onclick = async () => {
-  try {
-    await createCampaign();
-  } catch (e) {
-    setStatus(e.shortMessage || e.message, "err");
-  }
-};
-
-el("btnDonate").onclick = async () => {
-  try {
-    await contribute();
+    setStatus("Connecting…", "warn");
+    ctx = await connect();
+    el("addr").textContent = ctx.user;
+    el("net").textContent = `${ctx.network.name} (chainId=${Number(ctx.network.chainId)})`;
+    await refreshBalances();
+    await loadCampaign().catch(() => {});
+    setStatus("Connected ✅", "ok");
   } catch (e) {
     setStatus(e.shortMessage || e.message, "err");
   }
@@ -204,7 +216,35 @@ el("btnDonate").onclick = async () => {
 
 el("btnLoad").onclick = async () => {
   try {
+    if (!ctx) throw new Error("Connect first");
     await loadCampaign();
+  } catch (e) {
+    setStatus(e.shortMessage || e.message, "err");
+  }
+};
+
+el("btnDonate").onclick = async () => {
+  try {
+    if (!ctx) throw new Error("Connect first");
+    await donate();
+  } catch (e) {
+    setStatus(e.shortMessage || e.message, "err");
+  }
+};
+
+el("btnSubscribe").onclick = async () => {
+  try {
+    if (!ctx) throw new Error("Connect first");
+    await subscribeRenew();
+  } catch (e) {
+    setStatus(e.shortMessage || e.message, "err");
+  }
+};
+
+el("btnLoadPosts").onclick = async () => {
+  try {
+    if (!ctx) throw new Error("Connect first");
+    await loadPosts();
   } catch (e) {
     setStatus(e.shortMessage || e.message, "err");
   }
@@ -212,7 +252,48 @@ el("btnLoad").onclick = async () => {
 
 el("btnMyContrib").onclick = async () => {
   try {
-    await myContribution();
+    if (!ctx) throw new Error("Connect first");
+    await refreshMyContribution();
+    setStatus("Updated ✅", "ok");
+  } catch (e) {
+    setStatus(e.shortMessage || e.message, "err");
+  }
+};
+
+el("btnRefresh").onclick = async () => {
+  try {
+    if (!ctx) throw new Error("Connect first");
+    await refreshBalances();
+    await refreshSubscription();
+    setStatus("Updated ✅", "ok");
+  } catch (e) {
+    setStatus(e.shortMessage || e.message, "err");
+  }
+};
+
+// creator studio actions
+el("btnPublishPost").onclick = async () => {
+  try {
+    if (!ctx) throw new Error("Connect first");
+    await publishPost();
+  } catch (e) {
+    setStatus(e.shortMessage || e.message, "err");
+  }
+};
+
+el("btnCreateCampaign").onclick = async () => {
+  try {
+    if (!ctx) throw new Error("Connect first");
+    await createCampaign();
+  } catch (e) {
+    setStatus(e.shortMessage || e.message, "err");
+  }
+};
+
+el("btnCreateTier").onclick = async () => {
+  try {
+    if (!ctx) throw new Error("Connect first");
+    await createTier();
   } catch (e) {
     setStatus(e.shortMessage || e.message, "err");
   }
@@ -220,13 +301,13 @@ el("btnMyContrib").onclick = async () => {
 
 el("btnFinalize").onclick = async () => {
   try {
-    await finalizeCampaign();
+    if (!ctx) throw new Error("Connect first");
+    await finalize();
   } catch (e) {
     setStatus(e.shortMessage || e.message, "err");
   }
 };
 
-// optional: auto-update balances when account changes
 if (window.ethereum) {
   window.ethereum.on?.("accountsChanged", () => window.location.reload());
   window.ethereum.on?.("chainChanged", () => window.location.reload());

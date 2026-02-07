@@ -1,0 +1,197 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>CrowdSubHybrid</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="./styles.css" />
+  <style>
+    /* small platform-like tweaks */
+    .topbar{display:flex; justify-content:space-between; align-items:center; gap:12px; margin:18px 0;}
+    .brand{display:flex; flex-direction:column; gap:2px;}
+    .brand strong{font-size:18px;}
+    .chip{display:inline-flex; gap:8px; align-items:center;}
+    .split{display:grid; grid-template-columns: 1.2fr 0.8fr; gap:14px;}
+    @media (max-width: 920px){ .split{grid-template-columns: 1fr;} }
+
+    .tabs{display:flex; gap:10px; flex-wrap:wrap;}
+    .tab{padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.07); cursor:pointer; font-weight:600;}
+    .tab.active{background:linear-gradient(135deg, rgba(124,58,237,1), rgba(99,102,241,1)); border-color:transparent;}
+    .hidden{display:none!important;}
+
+    .postCard{margin-top:10px;}
+    .postCard h4{margin:0 0 6px; font-size:15px;}
+    .postMeta{color:rgba(255,255,255,0.62); font-size:12px;}
+    .divider{height:1px; background:rgba(255,255,255,0.10); margin:10px 0;}
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="topbar">
+      <div class="brand">
+        <strong>CrowdSubHybrid</strong>
+        <span class="muted small">Support creators • Subscribe or Donate • Sepolia</span>
+      </div>
+
+      <div class="chip">
+        <button id="btnConnect">Connect</button>
+        <span class="pill">Wallet: <code id="addr">—</code></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div class="col">
+          <div class="small">Network: <code id="net">—</code></div>
+          <div class="small">ETH: <code id="ethBal">—</code> • SUB: <code id="subBal">—</code></div>
+        </div>
+        <div class="col">
+          <label>Campaign ID</label>
+          <div class="row" style="align-items:center;">
+            <input id="campaignId" value="1" />
+            <button class="secondary" id="btnLoad">Open</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="status" class="status small">status: idle</div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" id="tabExplore">Explore</div>
+      <div class="tab" id="tabCreator">Creator Studio</div>
+    </div>
+
+    <!-- EXPLORE -->
+    <div id="viewExplore">
+      <div class="split">
+        <div class="card">
+          <h3 id="campTitle">Campaign</h3>
+          <div class="kv">
+            <div class="item"><span>Owner</span><code id="campOwner">—</code></div>
+            <div class="item"><span>Collected</span><code id="campCollected">—</code></div>
+            <div class="item"><span>Deadline</span><code id="campDeadline">—</code></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <h3>Support</h3>
+
+          <div class="row">
+            <div class="col">
+              <label>Donate (ETH)</label>
+              <input id="donEth" value="0.005" />
+              <button id="btnDonate">Donate</button>
+              <div class="muted small">One-time support (crowdfunding).</div>
+            </div>
+
+            <div class="col">
+              <label>Subscribe Tier ID</label>
+              <input id="tierId" value="1" />
+              <button id="btnSubscribe">Subscribe / Renew</button>
+              <div class="muted small">Manual renew via MetaMask.</div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <h3>Subscription</h3>
+          <div class="kv">
+            <div class="item"><span>isActive</span><code id="isActive">—</code></div>
+            <div class="item"><span>activeUntil</span><code id="activeUntil">—</code></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <h3>Content</h3>
+          <button class="secondary" id="btnLoadPosts">Load Posts</button>
+          <div class="small">Access: <code id="contentAccess">—</code></div>
+          <div id="posts"></div>
+        </div>
+
+        <div class="card">
+          <h3>Your Stats</h3>
+          <div class="kv">
+            <div class="item"><span>Your contribution</span><code id="myContrib">—</code></div>
+          </div>
+          <div class="actions">
+            <button class="secondary" id="btnMyContrib">Refresh</button>
+            <button class="secondary" id="btnRefresh">Refresh Balances</button>
+          </div>
+
+          <div class="divider"></div>
+
+          <div id="premiumBox" class="card hidden" style="margin:0;">
+            <h3>Premium</h3>
+            <p class="small">✅ You have active access.</p>
+            <p class="muted small">This box appears only when <code>isActive == true</code>.</p>
+          </div>
+
+          <div id="previewBox" class="card" style="margin:0;">
+            <h3>Preview</h3>
+            <p class="muted small">Subscribe to unlock full content.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CREATOR STUDIO -->
+    <div id="viewCreator" class="hidden">
+      <div class="card">
+        <h3>Creator Studio</h3>
+        <p class="muted small">This section is only for the campaign owner. If you are not the owner, it will stay hidden.</p>
+      </div>
+
+      <div id="creatorOnly" class="hidden">
+        <div class="card">
+          <h3>Create Campaign</h3>
+          <label>Title</label>
+          <input id="newTitle" value="My Campaign" />
+          <label>Goal (ETH)</label>
+          <input id="newGoal" value="0" />
+          <label>Duration (seconds)</label>
+          <input id="newDur" value="3600" />
+          <button id="btnCreateCampaign">Create</button>
+        </div>
+
+        <div class="card">
+          <h3>Create Tier</h3>
+          <label>Tier name</label>
+          <input id="newTierName" value="Bronze" />
+          <label>Price (ETH)</label>
+          <input id="newTierPrice" value="0.01" />
+          <label>Period (seconds)</label>
+          <input id="newTierPeriod" value="60" />
+          <button id="btnCreateTier">Create Tier</button>
+          <div class="muted small">Tip: Use 60 seconds for demo.</div>
+        </div>
+
+        <div class="card">
+          <h3>Publish Post</h3>
+          <label>Post title</label>
+          <input id="postTitle" value="Update #1" />
+          <label>Post body</label>
+          <textarea id="postBody" rows="6">Hello supporters! This is gated content.</textarea>
+          <button id="btnPublishPost">Publish</button>
+        </div>
+
+        <div class="card">
+          <h3>Finalize (Advanced)</h3>
+          <p class="muted small">Finalize only after deadline.</p>
+          <button class="secondary" id="btnFinalize">Finalize Campaign</button>
+        </div>
+      </div>
+
+      <div id="creatorBlocked" class="card">
+        <h3>Not the owner</h3>
+        <p class="muted small">Switch to the creator wallet (campaign owner) to use Creator Studio.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
