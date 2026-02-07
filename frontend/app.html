@@ -59,9 +59,14 @@
     </div>
 
     <div class="tabs">
-      <div class="tab active" id="tabExplore">Explore</div>
-      <div class="tab" id="tabCreator">Creator Studio</div>
+        <div class="tab active" id="tabExplore">User</div>
+        <div class="tab" id="tabCreator">Creator</div>
+
+        <div class="pill" style="margin-left:auto;">
+            Mode: <code id="modeLabel">User</code>
+        </div>
     </div>
+
 
     <!-- EXPLORE -->
     <div id="viewExplore">
@@ -184,9 +189,13 @@
       </div>
 
       <div id="creatorBlocked" class="card">
-        <h3>Not the owner</h3>
-        <p class="muted small">Switch to the creator wallet (campaign owner) to use Creator Studio.</p>
-      </div>
+        <h3>Creator mode locked</h3>
+        <p class="muted small">
+            This campaign can be managed only by the owner wallet.
+            Switch MetaMask account to the campaign owner to unlock Creator tools.
+        </p>
+    </div>
+
     </div>
 
   </div>

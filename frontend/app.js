@@ -6,14 +6,37 @@ import {
 } from "./common.js";
 
 let ctx = null;
+
 let currentCampaignId = 1n;
-let campaignOwner = null;
+let campaignOwner = null; // lowercase
+let isOwner = false;
+
+let mode = "user"; // "user" | "creator"
+
+function setMode(next) {
+  mode = next;
+  el("modeLabel").textContent = next === "creator" ? "Creator" : "User";
+  showTab(next === "creator" ? "creator" : "explore");
+}
 
 function showTab(which) {
-  el("tabExplore").classList.toggle("active", which === "explore");
-  el("tabCreator").classList.toggle("active", which === "creator");
-  el("viewExplore").classList.toggle("hidden", which !== "explore");
-  el("viewCreator").classList.toggle("hidden", which !== "creator");
+  const creator = which === "creator";
+
+  el("tabExplore").classList.toggle("active", !creator);
+  el("tabCreator").classList.toggle("active", creator);
+
+  el("viewExplore").classList.toggle("hidden", creator);
+  el("viewCreator").classList.toggle("hidden", !creator);
+
+  // In creator view: show tools only if owner
+  el("creatorOnly").classList.toggle("hidden", !isOwner);
+  el("creatorBlocked").classList.toggle("hidden", isOwner);
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (m) => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#039;"
+  }[m]));
 }
 
 function renderPosts(access, posts) {
@@ -38,44 +61,9 @@ function renderPosts(access, posts) {
   }
 }
 
-function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, (m) => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"
-  }[m]));
-}
-
 async function refreshBalances() {
   el("ethBal").textContent = `${await getEthBalance(ctx.provider, ctx.user)} ETH`;
   el("subBal").textContent = `${await getSubBalance(ctx.token, ctx.user)} SUB`;
-}
-
-async function loadCampaign() {
-  currentCampaignId = BigInt(el("campaignId").value.trim());
-
-  setStatus("Loading campaign…", "warn");
-  const c = await ctx.hybrid.getCampaign(currentCampaignId);
-
-  const title = c.title ?? c[0];
-  campaignOwner = (c.owner ?? c[1]).toLowerCase();
-  const collected = ethers.formatEther(c.collectedWei ?? c[4]);
-  const deadline = String(c.deadline ?? c[3]);
-
-  el("campTitle").textContent = title;
-  el("campOwner").textContent = campaignOwner;
-  el("campCollected").textContent = `${collected} ETH`;
-  el("campDeadline").textContent = deadline;
-
-  // role gating for Creator Studio
-  const isOwner = ctx.user.toLowerCase() === campaignOwner;
-  el("creatorOnly").classList.toggle("hidden", !isOwner);
-  el("creatorBlocked").classList.toggle("hidden", isOwner);
-
-  // set creator default inputs
-  el("tierId").value = "1";
-
-  await refreshSubscription();
-  await refreshMyContribution().catch(() => {});
-  setStatus("Campaign ready ✅", "ok");
 }
 
 async function refreshSubscription() {
@@ -94,12 +82,45 @@ async function refreshMyContribution() {
   el("myContrib").textContent = `${ethers.formatEther(amt)} ETH`;
 }
 
+async function loadCampaign() {
+  currentCampaignId = BigInt(el("campaignId").value.trim());
+
+  setStatus("Loading campaign…", "warn");
+  const c = await ctx.hybrid.getCampaign(currentCampaignId);
+
+  const title = c.title ?? c[0];
+  campaignOwner = (c.owner ?? c[1]).toLowerCase();
+  const collected = ethers.formatEther(c.collectedWei ?? c[4]);
+  const deadline = String(c.deadline ?? c[3]);
+
+  el("campTitle").textContent = title;
+  el("campOwner").textContent = campaignOwner;
+  el("campCollected").textContent = `${collected} ETH`;
+  el("campDeadline").textContent = deadline;
+
+  isOwner = ctx.user.toLowerCase() === campaignOwner;
+
+  // Ensure creator view shows correct lock/tools state
+  showTab(mode === "creator" ? "creator" : "explore");
+
+  // Defaults
+  el("tierId").value = el("tierId").value || "1";
+
+  await refreshSubscription();
+  await refreshMyContribution().catch(() => {});
+  setStatus("Campaign ready ✅", "ok");
+}
+
 async function donate() {
   const amountEth = el("donEth").value.trim();
+
   setStatus("Confirm donation in MetaMask…", "warn");
-  const tx = await ctx.hybrid.contribute(currentCampaignId, { value: ethers.parseEther(amountEth) });
+  const tx = await ctx.hybrid.contribute(currentCampaignId, {
+    value: ethers.parseEther(amountEth)
+  });
   setStatus(`Pending: ${tx.hash}`, "warn");
   await tx.wait();
+
   setStatus("Donation successful ✅", "ok");
   await refreshBalances();
   await refreshMyContribution();
@@ -123,6 +144,7 @@ async function subscribeRenew() {
 
 async function loadPosts() {
   setStatus("Loading posts…", "warn");
+
   const url = `${BACKEND_URL}/campaigns/${currentCampaignId}/posts?address=${ctx.user}`;
   const resp = await fetch(url);
   const data = await resp.json();
@@ -130,11 +152,13 @@ async function loadPosts() {
 
   el("contentAccess").textContent = data.access;
   renderPosts(data.access, data.posts);
+
   setStatus("Posts loaded ✅", "ok");
 }
 
 async function publishPost() {
-  // creator only
+  if (!isOwner) throw new Error("Creator mode locked: you are not the campaign owner");
+
   const title = el("postTitle").value.trim();
   const body = el("postBody").value.trim();
   if (!title || !body) throw new Error("Fill post title and body");
@@ -163,6 +187,8 @@ nonce: ${nonce}`;
 }
 
 async function createCampaign() {
+  if (!ctx) throw new Error("Connect first");
+
   const title = el("newTitle").value.trim();
   const goalEth = el("newGoal").value.trim();
   const dur = BigInt(el("newDur").value.trim());
@@ -172,16 +198,23 @@ async function createCampaign() {
   setStatus(`Pending: ${tx.hash}`, "warn");
   await tx.wait();
 
-  setStatus("Campaign created ✅. Open it by ID.", "ok");
+  setStatus("Campaign created ✅ (open by ID)", "ok");
 }
 
 async function createTier() {
+  if (!isOwner) throw new Error("Creator mode locked: you are not the campaign owner");
+
   const name = el("newTierName").value.trim();
   const priceEth = el("newTierPrice").value.trim();
   const period = BigInt(el("newTierPeriod").value.trim());
 
   setStatus("Confirm tier creation…", "warn");
-  const tx = await ctx.hybrid.createTier(currentCampaignId, name, ethers.parseEther(priceEth), period);
+  const tx = await ctx.hybrid.createTier(
+    currentCampaignId,
+    name,
+    ethers.parseEther(priceEth),
+    period
+  );
   setStatus(`Pending: ${tx.hash}`, "warn");
   await tx.wait();
 
@@ -189,23 +222,31 @@ async function createTier() {
 }
 
 async function finalize() {
+  if (!isOwner) throw new Error("Creator mode locked: you are not the campaign owner");
+
   setStatus("Confirm finalize…", "warn");
   const tx = await ctx.hybrid.finalize(currentCampaignId);
   setStatus(`Pending: ${tx.hash}`, "warn");
   await tx.wait();
+
   setStatus("Finalized ✅", "ok");
   await loadCampaign();
 }
 
-el("tabExplore").onclick = () => showTab("explore");
-el("tabCreator").onclick = () => showTab("creator");
+// ===== UI EVENTS =====
+el("tabExplore").onclick = () => setMode("user");
+el("tabCreator").onclick = () => setMode("creator");
 
 el("btnConnect").onclick = async () => {
   try {
     setStatus("Connecting…", "warn");
     ctx = await connect();
+
     el("addr").textContent = ctx.user;
     el("net").textContent = `${ctx.network.name} (chainId=${Number(ctx.network.chainId)})`;
+
+    setMode("user");
+
     await refreshBalances();
     await loadCampaign().catch(() => {});
     setStatus("Connected ✅", "ok");
@@ -271,7 +312,7 @@ el("btnRefresh").onclick = async () => {
   }
 };
 
-// creator studio actions
+// Creator actions
 el("btnPublishPost").onclick = async () => {
   try {
     if (!ctx) throw new Error("Connect first");
