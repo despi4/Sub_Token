@@ -1,0 +1,115 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Sepolia Crowdfunding DApp</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 980px; margin: 24px auto; padding: 0 12px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 14px; margin: 14px 0; }
+    input { width: 340px; padding: 8px; margin: 6px 0; }
+    button { padding: 9px 12px; cursor: pointer; margin: 6px 0; }
+    code { background: #f6f6f6; padding: 2px 6px; border-radius: 7px; }
+    .row { display: flex; gap: 16px; flex-wrap: wrap; }
+    .col { flex: 1; min-width: 280px; }
+    .muted { color: #666; }
+    .ok { color: #0a7; }
+    .err { color: #b00; }
+    .warn { color: #b80; }
+    .small { font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>Final Project: Crowdfunding + Reward Token (Sepolia)</h1>
+  <p class="muted">MetaMask + Solidity + JavaScript (ethers.js)</p>
+
+  <div class="card">
+    <button id="btnConnect">Connect MetaMask</button>
+    <div class="small">Network: <code id="net">—</code></div>
+    <div class="small">Wallet: <code id="addr">—</code></div>
+    <div class="small">ETH Balance: <code id="ethBal">—</code></div>
+    <div class="small">RWD Balance: <code id="tokBal">—</code></div>
+    <div id="status" class="muted small">status: idle</div>
+  </div>
+
+  <div class="card">
+    <h3>Contract Setup</h3>
+    <div class="row">
+      <div class="col">
+        <div>Crowdfunding address:</div>
+        <input id="crowdAddr" placeholder="0x..." />
+      </div>
+      <div class="col">
+        <div>RewardToken address:</div>
+        <input id="tokenAddr" placeholder="0x..." />
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <div>Crowdfunding ABI (paste JSON array):</div>
+        <textarea id="crowdAbi" rows="6" style="width:100%;" placeholder='[ ... ABI ... ]'></textarea>
+      </div>
+      <div class="col">
+        <div>RewardToken ABI (paste JSON array):</div>
+        <textarea id="tokenAbi" rows="6" style="width:100%;" placeholder='[ ... ABI ... ]'></textarea>
+      </div>
+    </div>
+    <button id="btnInit">Initialize Contracts</button>
+    <div class="muted small">Tip: ABI is copied from Remix compiler output.</div>
+  </div>
+
+  <div class="card">
+    <h3>Create Campaign</h3>
+    <div>Title:</div>
+    <input id="cTitle" value="My Campaign" />
+    <div>Goal (ETH):</div>
+    <input id="cGoal" value="0.5" />
+    <div>Duration (seconds):</div>
+    <input id="cDur" value="300" />
+    <br/>
+    <button id="btnCreate">Create</button>
+    <div class="muted small">After creation, Campaign ID increments starting from 1.</div>
+  </div>
+
+  <div class="card">
+    <h3>Contribute to Campaign</h3>
+    <div>Campaign ID:</div>
+    <input id="campId" value="1" />
+    <div>Amount (ETH):</div>
+    <input id="donateEth" value="0.01" />
+    <br/>
+    <button id="btnDonate">Contribute</button>
+  </div>
+
+  <div class="card">
+    <h3>Campaign Info + Contribution Tracking</h3>
+    <div>Campaign ID:</div>
+    <input id="infoId" value="1" />
+    <br/>
+    <button id="btnLoad">Load Campaign</button>
+    <button id="btnMyContrib">My Contribution</button>
+
+    <div class="small" style="margin-top:10px;">
+      <div>Title: <code id="infoTitle">—</code></div>
+      <div>Owner: <code id="infoOwner">—</code></div>
+      <div>Goal (ETH): <code id="infoGoal">—</code></div>
+      <div>Collected (ETH): <code id="infoCollected">—</code></div>
+      <div>Deadline (unix): <code id="infoDeadline">—</code></div>
+      <div>Finalized: <code id="infoFinal">—</code></div>
+      <div>My contribution (ETH): <code id="myContrib">—</code></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Finalize Campaign</h3>
+    <div>Campaign ID:</div>
+    <input id="finId" value="1" />
+    <br/>
+    <button id="btnFinalize">Finalize (after deadline)</button>
+    <div class="muted small">Finalize only works after the campaign deadline.</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
