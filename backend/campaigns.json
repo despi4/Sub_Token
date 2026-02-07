@@ -1,0 +1,20 @@
+{
+  "campaigns": [
+    {
+      "campaignId": "4",
+      "title": "test campaign 2",
+      "imageUrl": "https://media.gettyimages.com/id/3238896/photo/austrian-born-bodybuilder-arnold-schwarzenegger-points-one-hand-out-as-he-flexes-his-torso-on.jpg?s=612x612&w=0&k=20&c=2CqAjsi--u6q2TmZkgA5hW2B3FG2M_pVZeRJYFKuJZQ=",
+      "description": "uky",
+      "owner": "0x4d56177370c4710da374c4d72c93f6bd888b8eed",
+      "createdAt": "2026-02-07T17:59:11.624Z"
+    },
+    {
+      "campaignId": "6",
+      "title": "dsfdfd",
+      "imageUrl": "https://www.gettyimages.com/detail/news-photo/body-builder-actor-and-future-governor-of-california-arnold-news-photo/83149193",
+      "description": "uky",
+      "owner": "0x4d56177370c4710da374c4d72c93f6bd888b8eed",
+      "createdAt": "2026-02-07T18:00:50.805Z"
+    }
+  ]
+}

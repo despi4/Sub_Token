@@ -1,203 +1,364 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>CrowdSubHybrid</title>
+  <title>CrowdSub Hybrid | Marketplace</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="./styles.css" />
+
   <style>
-    /* small platform-like tweaks */
-    .topbar{display:flex; justify-content:space-between; align-items:center; gap:12px; margin:18px 0;}
-    .brand{display:flex; flex-direction:column; gap:2px;}
-    .brand strong{font-size:18px;}
-    .chip{display:inline-flex; gap:8px; align-items:center;}
-    .split{display:grid; grid-template-columns: 1.2fr 0.8fr; gap:14px;}
-    @media (max-width: 920px){ .split{grid-template-columns: 1fr;} }
+    :root {
+      --accent: #8b5cf6;
+      --accent-hover: #7c3aed;
+      --bg-dark: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --border: rgba(255, 255, 255, 0.1);
+    }
 
-    .tabs{display:flex; gap:10px; flex-wrap:wrap;}
-    .tab{padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.07); cursor:pointer; font-weight:600;}
-    .tab.active{background:linear-gradient(135deg, rgba(124,58,237,1), rgba(99,102,241,1)); border-color:transparent;}
-    .hidden{display:none!important;}
+    body {
+      background-color: var(--bg-dark);
+      background-image:
+        radial-gradient(circle at top right, #1e1b4b, transparent),
+        radial-gradient(circle at bottom left, #1e1b4b, transparent);
+      color: #f8fafc;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
 
-    .postCard{margin-top:10px;}
-    .postCard h4{margin:0 0 6px; font-size:15px;}
-    .postMeta{color:rgba(255,255,255,0.62); font-size:12px;}
-    .divider{height:1px; background:rgba(255,255,255,0.10); margin:10px 0;}
+    .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+
+    .logo-area h1 {
+      margin: 0;
+      font-size: 24px;
+      background: linear-gradient(to right, #a78bfa, #6366f1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 18px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      padding: 15px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 18px;
+      background: rgba(0,0,0,0.2);
+      padding: 5px;
+      border-radius: 12px;
+      width: fit-content;
+    }
+
+    .nav-tab {
+      padding: 8px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.3s;
+      border: none;
+      color: #94a3b8;
+      background: transparent;
+      font-weight: 600;
+    }
+
+    .nav-tab.active {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+    }
+
+    .campaign-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 25px;
+    }
+
+    .campaign-card {
+      background: var(--card-bg);
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      transition: transform 0.25s ease, border-color 0.25s ease;
+    }
+
+    .campaign-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+    }
+
+    .campaign-banner {
+      width: 100%;
+      height: 160px;
+      background: #1e293b;
+      object-fit: cover;
+    }
+
+    .campaign-content { padding: 18px; }
+    .campaign-content h3 { margin: 0 0 10px 0; font-size: 1.25rem; }
+
+    /* Progress */
+    .progress-container {
+      background: rgba(255, 255, 255, 0.06);
+      height: 12px;
+      border-radius: 20px;
+      margin: 12px 0 8px 0;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .progress-bar {
+      background: linear-gradient(90deg, #8b5cf6, #d946ef);
+      height: 100%;
+      width: 0%;
+      border-radius: 20px;
+      transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 0 15px rgba(139, 92, 246, 0.45);
+    }
+
+    .progress-stats {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #cbd5e1;
+    }
+    .percent-label { color: #a78bfa; }
+
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      gap: 10px;
+    }
+
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button:hover { background: var(--accent-hover); }
+    button.secondary { background: rgba(255,255,255,0.12); }
+    button.secondary:hover { background: rgba(255,255,255,0.18); }
+
+    input, textarea {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--border);
+      color: white;
+      padding: 10px;
+      border-radius: 8px;
+      width: 100%;
+      margin-bottom: 10px;
+      outline: none;
+    }
+
+    .hidden { display: none !important; }
+    .muted { color: #94a3b8; }
+    .small { font-size: 12px; }
+
+    .badge {
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      text-transform: uppercase;
+      background: rgba(139, 92, 246, 0.2);
+      color: #a78bfa;
+      font-weight: 700;
+    }
+
+    .tokenRow {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-weight:bold;
+    }
+
+    .subIcon {
+      width: 18px;
+      height: 18px;
+      display: inline-block;
+      vertical-align: middle;
+      filter: drop-shadow(0 0 6px rgba(139,92,246,0.45));
+    }
+
+    /* Details wrapper */
+    #detailsWrap {
+      margin-top: 26px;
+      border-top: 2px solid var(--accent);
+      padding-top: 18px;
+    }
+
+    .detailsHeader {
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
+
   <div class="container">
-
-    <div class="topbar">
-      <div class="brand">
-        <strong>CrowdSubHybrid</strong>
-        <span class="muted small">Support creators • Subscribe or Donate • Sepolia</span>
+    <header class="header">
+      <div class="logo-area">
+        <h1>SubToken</h1>
+        <div class="muted small">Sepolia Testnet Portal</div>
       </div>
 
-      <div class="chip">
-        <button id="btnConnect">Connect</button>
-        <span class="pill">Wallet: <code id="addr">—</code></span>
+      <div style="text-align: right;">
+        <button id="btnConnect">Connect Wallet</button>
+        <div class="small muted" style="margin-top:5px;">
+          <code id="addr">Not Connected</code>
+        </div>
+      </div>
+    </header>
+
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="muted small">Network</div>
+        <div id="net" style="font-weight: bold;">—</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="muted small">Your Balance</div>
+        <div style="font-weight: bold;">
+          <span id="ethBal">0</span> ETH
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="muted small">Tokens</div>
+        <div class="tokenRow">
+          <!-- SUB icon -->
+          <svg class="subIcon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M12 2L20 6.5V17.5L12 22L4 17.5V6.5L12 2Z" stroke="#a78bfa" stroke-width="1.7"/>
+            <path d="M8.2 9.1C8.8 7.7 10.2 6.8 12 6.8C14.2 6.8 15.7 8 15.7 9.7C15.7 11 14.9 11.8 13.6 12.3L11.8 12.9C10.9 13.2 10.5 13.6 10.5 14.2C10.5 15 11.3 15.5 12.4 15.5C13.6 15.5 14.6 15 15 14.1" stroke="#d946ef" stroke-width="1.7" stroke-linecap="round"/>
+          </svg>
+          <span id="subBal">0</span> SUB
+        </div>
       </div>
     </div>
 
-    <div class="card">
-      <div class="row">
-        <div class="col">
-          <div class="small">Network: <code id="net">—</code></div>
-          <div class="small">ETH: <code id="ethBal">—</code> • SUB: <code id="subBal">—</code></div>
-        </div>
-        <div class="col">
-          <label>Campaign ID</label>
-          <div class="row" style="align-items:center;">
-            <input id="campaignId" value="1" />
-            <button class="secondary" id="btnLoad">Open</button>
-          </div>
-        </div>
-      </div>
-
-      <div id="status" class="status small">status: idle</div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" id="tabExplore">Marketplace</button>
+      <button class="nav-tab" id="tabCreator">My Studio</button>
     </div>
 
-    <div class="tabs">
-        <div class="tab active" id="tabExplore">User</div>
-        <div class="tab" id="tabCreator">Creator</div>
-
-        <div class="pill" style="margin-left:auto;">
-            Mode: <code id="modeLabel">User</code>
-        </div>
-    </div>
-
-
-    <!-- EXPLORE -->
+    <!-- Explore -->
     <div id="viewExplore">
-      <div class="split">
-        <div class="card">
-          <h3 id="campTitle">Campaign</h3>
-          <div class="kv">
-            <div class="item"><span>Owner</span><code id="campOwner">—</code></div>
-            <div class="item"><span>Collected</span><code id="campCollected">—</code></div>
-            <div class="item"><span>Deadline</span><code id="campDeadline">—</code></div>
-          </div>
+      <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 style="margin:0;">Active Campaigns</h2>
+        <button class="secondary" id="btnLoadCampaigns">↻ Refresh List</button>
+      </div>
 
-          <div class="divider"></div>
-
-          <h3>Support</h3>
-
-          <div class="row">
-            <div class="col">
-              <label>Donate (ETH)</label>
-              <input id="donEth" value="0.005" />
-              <button id="btnDonate">Donate</button>
-              <div class="muted small">One-time support (crowdfunding).</div>
-            </div>
-
-            <div class="col">
-              <label>Subscribe Tier ID</label>
-              <input id="tierId" value="1" />
-              <button id="btnSubscribe">Subscribe / Renew</button>
-              <div class="muted small">Manual renew via MetaMask.</div>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
-          <h3>Subscription</h3>
-          <div class="kv">
-            <div class="item"><span>isActive</span><code id="isActive">—</code></div>
-            <div class="item"><span>activeUntil</span><code id="activeUntil">—</code></div>
-          </div>
-
-          <div class="divider"></div>
-
-          <h3>Content</h3>
-          <button class="secondary" id="btnLoadPosts">Load Posts</button>
-          <div class="small">Access: <code id="contentAccess">—</code></div>
-          <div id="posts"></div>
-        </div>
-
-        <div class="card">
-          <h3>Your Stats</h3>
-          <div class="kv">
-            <div class="item"><span>Your contribution</span><code id="myContrib">—</code></div>
-          </div>
-          <div class="actions">
-            <button class="secondary" id="btnMyContrib">Refresh</button>
-            <button class="secondary" id="btnRefresh">Refresh Balances</button>
-          </div>
-
-          <div class="divider"></div>
-
-          <div id="premiumBox" class="card hidden" style="margin:0;">
-            <h3>Premium</h3>
-            <p class="small">✅ You have active access.</p>
-            <p class="muted small">This box appears only when <code>isActive == true</code>.</p>
-          </div>
-
-          <div id="previewBox" class="card" style="margin:0;">
-            <h3>Preview</h3>
-            <p class="muted small">Subscribe to unlock full content.</p>
-          </div>
-        </div>
+      <div id="campaignList" class="campaign-grid">
+        <div class="muted">Loading campaigns...</div>
       </div>
     </div>
 
-    <!-- CREATOR STUDIO -->
+    <!-- Creator -->
     <div id="viewCreator" class="hidden">
-      <div class="card">
-        <h3>Creator Studio</h3>
-        <p class="muted small">This section is only for the campaign owner. If you are not the owner, it will stay hidden.</p>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 22px;">
+        <div>
+          <div class="stat-card" style="margin-bottom: 16px;">
+            <h3 style="margin-top:0;">Launch New Campaign</h3>
+            <label>Campaign Title</label>
+            <input id="newTitle" placeholder="Ex: Indie Game Dev" />
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                <label>Goal (ETH)</label>
+                <input id="newGoal" value="0.1" />
+              </div>
+              <div>
+                <label>Duration (sec)</label>
+                <input id="newDur" value="86400" />
+              </div>
+            </div>
+            <button id="btnCreateCampaign" style="width:100%">Create Campaign</button>
+          </div>
+
+          <div id="creatorOnly" class="stat-card hidden">
+            <h3 style="margin-top:0;">Management</h3>
+            <p class="small muted">Open your campaign in Marketplace to manage tiers and posts.</p>
+            <button id="btnCreateTier" class="secondary" style="width:100%; margin-bottom:10px;">Add Sub Tier</button>
+            <button id="btnPublishPost" class="secondary" style="width:100%;">Post Update</button>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <h3 style="margin-top:0;">Campaign Customization</h3>
+          <p class="small muted">Set visuals for the marketplace card (off-chain).</p>
+
+          <label>Campaign ID</label>
+          <input id="cardCampaignId" value="1" />
+
+          <label>Image URL</label>
+          <input id="cardImageUrl" placeholder="https://..." />
+
+          <label>Description</label>
+          <textarea id="cardDesc" rows="3" placeholder="Tell your story..."></textarea>
+
+          <button id="btnSaveCard" style="width:100%">Update Card Data</button>
+        </div>
       </div>
-
-      <div id="creatorOnly" class="hidden">
-        <div class="card">
-          <h3>Create Campaign</h3>
-          <label>Title</label>
-          <input id="newTitle" value="My Campaign" />
-          <label>Goal (ETH)</label>
-          <input id="newGoal" value="0" />
-          <label>Duration (seconds)</label>
-          <input id="newDur" value="3600" />
-          <button id="btnCreateCampaign">Create</button>
-        </div>
-
-        <div class="card">
-          <h3>Create Tier</h3>
-          <label>Tier name</label>
-          <input id="newTierName" value="Bronze" />
-          <label>Price (ETH)</label>
-          <input id="newTierPrice" value="0.01" />
-          <label>Period (seconds)</label>
-          <input id="newTierPeriod" value="60" />
-          <button id="btnCreateTier">Create Tier</button>
-          <div class="muted small">Tip: Use 60 seconds for demo.</div>
-        </div>
-
-        <div class="card">
-          <h3>Publish Post</h3>
-          <label>Post title</label>
-          <input id="postTitle" value="Update #1" />
-          <label>Post body</label>
-          <textarea id="postBody" rows="6">Hello supporters! This is gated content.</textarea>
-          <button id="btnPublishPost">Publish</button>
-        </div>
-
-        <div class="card">
-          <h3>Finalize (Advanced)</h3>
-          <p class="muted small">Finalize only after deadline.</p>
-          <button class="secondary" id="btnFinalize">Finalize Campaign</button>
-        </div>
-      </div>
-
-      <div id="creatorBlocked" class="card">
-        <h3>Creator mode locked</h3>
-        <p class="muted small">
-            This campaign can be managed only by the owner wallet.
-            Switch MetaMask account to the campaign owner to unlock Creator tools.
-        </p>
     </div>
 
+    <!-- Details: always shown below tabs, but JS will hide it when switching tabs -->
+    <div id="detailsWrap" class="hidden">
+      <div class="detailsHeader">
+        <h2 style="margin:0;">Campaign</h2>
+        <button id="btnCloseDetails" class="secondary">Close</button>
+      </div>
+
+      <!-- Progress bar for selected campaign -->
+      <div class="stat-card">
+        <div class="muted small">Progress</div>
+        <div class="progress-container">
+          <div id="detailsProgressBar" class="progress-bar"></div>
+        </div>
+        <div class="progress-stats">
+          <div>Collected: <span id="detailsCollectedEth">—</span> ETH</div>
+          <div>Goal: <span id="detailsGoalEth">—</span> ETH</div>
+          <div class="percent-label"><span id="detailsPercent">0</span>%</div>
+        </div>
+      </div>
+
+      <div id="campaignDetails"></div>
     </div>
 
+  </div>
+
+  <!-- status line -->
+  <div id="status" class="muted small" style="max-width:1100px; margin: 12px auto 30px auto; padding:0 20px;">
+    status: idle
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
